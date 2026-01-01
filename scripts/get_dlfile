@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Look up the given filename in the description file and output the
+# real filename so that it can be redirected via linkto
+#
+# FIXME
+# - the description file is expected to be in the current dir
+
+DESCRIPTIONS=Descriptions.txt
+
+FILE="$1"
+if [ -z "$FILE" ]; then
+    echo "need filename" >&2
+    exit 1
+fi
+
+if ! LINE=$(grep -E "^$FILE " "$DESCRIPTIONS"); then
+    echo "Unknown file $FILE" >&2
+    exit 1
+fi
+
+SUM_FIELD=$(echo "$LINE" | awk '{print $2}')
+TYPE=$(echo "$SUM_FIELD" | cut -d: -f1)
+PARAM=$(echo "$SUM_FIELD" | cut -d: -f2 | tr '[:upper:]' '[:lower:]')
+IDEAPAD=$(echo "$LINE" | grep "Ideapad")
+
+if [ "$TYPE" = "linkto" ] && [ -n "$PARAM" ]; then
+    echo "$PARAM"
+else
+   if [ ! -z "$IDEAPAD" ]; then
+       echo "../../consumer/mobiles/$FILE"
+   else
+       echo "$FILE"
+   fi
+fi

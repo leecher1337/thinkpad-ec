@@ -634,9 +634,8 @@ sub _check {
          9437264 => 1,  # l430
         13631568 => 1,  # e330
         12587008 => 1,
+        16777296 => 1   # z485, z585
     };
-
-    my $capsule_offset_hack = $self->{capsule_offset_hack} || 0;
 
     my $header_offset = $self->_find_pfh();
     return undef if (!defined($header_offset));
@@ -673,7 +672,7 @@ sub _check {
 
     # now load the partition table
     $buf = $self->get_block(
-        $self->{header}{imagetableoffset}+$capsule_offset_hack,
+        $header_offset + ($self->{header}{imagetableoffset} & 0xFFFF),
         (4+4+8+4)*$self->{header}{numberofimages}
     );
     if (!defined($buf)) {
@@ -692,7 +691,7 @@ sub _check {
         delete $dir->{_rest};
 
         my $buf2 = $self->get_block(
-            $dir->{NameOffset}+$capsule_offset_hack,
+            $header_offset + ($dir->{NameOffset} & 0xFFFF),
             32 # TODO - just a guess at the max name size
         );
         if (!defined($buf2)) {
@@ -707,7 +706,14 @@ sub _check {
 
         if ($name eq 'Ec') {
             $self->set_offset_size(
-                $dir->{FileOffset}+$capsule_offset_hack,
+                $dir->{FileOffset}|($header_offset & 0x00FFFF),
+                $dir->{Size},
+            );
+            return $self;
+        }
+        if ($name eq 'EC') {
+            $self->set_offset_size(
+                $dir->{FileOffset}|($header_offset & 0xF0FFFF),
                 $dir->{Size},
             );
             return $self;
@@ -744,7 +750,7 @@ use base qw(FL1::PFH_header);
 sub _check {
     my $self = shift;
 
-    $self->{capsule_offset_hack} = 0x1d0;
+    #$self->{capsule_offset_hack} = 0x1d0;
     # This is probably:
     # header1_size + header2_size + ?
     # 0x50         + 0x168        + 0x18
